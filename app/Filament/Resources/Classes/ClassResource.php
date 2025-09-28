@@ -20,7 +20,7 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class ClassResource extends Resource
 {
-    protected static ?string $model = Classroom::class;
+    protected static ?string $model = ClassSiswa::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 

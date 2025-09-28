@@ -7,13 +7,19 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Student extends Model
 {
+    protected $fillable = [
+        'name',
+        'email',
+        'class_id',
+    ];
+
     public function class(): BelongsTo
     {
-        return $this->belongsTo(Classroom::class);
+        return $this->belongsTo(ClassSiswa::class, 'class_id');
     }
 
     public function progress()
     {
-        return $this->hasMany(StudentProgress::class);
+        return $this->hasMany(StudentProgress::class, 'student_id');
     }
 }

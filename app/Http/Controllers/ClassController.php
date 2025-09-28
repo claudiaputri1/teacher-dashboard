@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ClassController extends Controller
 {
@@ -11,7 +12,20 @@ class ClassController extends Controller
      */
     public function index()
     {
-        //
+        try {
+            $teacherId = auth()->id();
+            $classes = DB::table('classes')
+                ->where('teacher_id', $teacherId)
+                ->get();
+            
+            return response()->json($classes);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch classes',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     /**

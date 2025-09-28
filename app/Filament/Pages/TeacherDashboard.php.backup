@@ -1,0 +1,158 @@
+<?php
+
+namespace App\Filament\Pages;
+
+use App\Models\Student;
+use App\Models\Module;
+use App\Models\StudentProgress;
+use App\Models\ClassSiswa;
+use Filament\Pages\Page;
+use Illuminate\Support\Facades\DB;
+use BackedEnum;
+use Filament\Support\Icons\Heroicon;
+
+class TeacherDashboard extends Page
+{
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static ?string $navigationLabel = 'Dashboard Guru';
+    protected static string $view = 'filament.pages.teacher-dashboard';
+    protected static ?int $navigationSort = 1;
+
+    public $totalStudents;
+    public $averageProgress;
+    public $pendingAssignments;
+    public $engagementRate;
+    public $recentStudents;
+    public $weeklyProgress;
+    public $monthlyProgress;
+    public $recentActivities;
+
+    public function mount()
+    {
+        $this->loadDashboardData();
+    }
+
+    protected function loadDashboardData()
+    {
+        // Total Students
+        $this->totalStudents = Student::count();
+
+        // Average Progress
+        $this->averageProgress = StudentProgress::avg('completed') ?? 0;
+
+        // Pending Assignments (modules not completed)
+        $this->pendingAssignments = StudentProgress::where('completed', '<', 100)->count();
+
+        // Engagement Rate (students with recent activity)
+        $this->engagementRate = Student::whereHas('progress', function($query) {
+            $query->where('updated_at', '>=', now()->subWeek());
+        })->count() / max($this->totalStudents, 1) * 100;
+
+        // Recent Active Students
+        $this->recentStudents = Student::with(['progress.module'])
+            ->whereHas('progress', function($query) {
+                $query->where('updated_at', '>=', now()->subDay());
+            })
+            ->limit(4)
+            ->get()
+            ->map(function($student) {
+                $latestProgress = $student->progress->sortByDesc('updated_at')->first();
+                return [
+                    'name' => $student->name,
+                    'initials' => $this->getInitials($student->name),
+                    'module' => $latestProgress->module->title ?? 'No Module',
+                    'progress' => $latestProgress->completed ?? 0
+                ];
+            });
+
+        // Weekly Progress Data
+        $this->weeklyProgress = $this->getWeeklyProgressData();
+
+        // Recent Activities
+        $this->recentActivities = $this->getRecentActivities();
+    }
+
+    protected function getInitials($name)
+    {
+        $words = explode(' ', $name);
+        $initials = '';
+        foreach ($words as $word) {
+            $initials .= strtoupper(substr($word, 0, 1));
+        }
+        return substr($initials, 0, 2);
+    }
+
+    protected function getWeeklyProgressData()
+    {
+        $days = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+        $completedModules = [];
+        $studyHours = [];
+
+        for ($i = 6; $i >= 0; $i--) {
+            $date = now()->subDays($i);
+            
+            // Modules completed on this day
+            $completed = StudentProgress::whereDate('updated_at', $date)
+                ->where('completed', 100)
+                ->count();
+            $completedModules[] = $completed;
+
+            // Simulate study hours (you can replace with real data)
+            $studyHours[] = rand(8, 25);
+        }
+
+        return [
+            'labels' => $days,
+            'completedModules' => $completedModules,
+            'studyHours' => $studyHours
+        ];
+    }
+
+    protected function getRecentActivities()
+    {
+        $activities = [];
+
+        // Recent completions
+        $recentCompletions = StudentProgress::with(['student', 'module'])
+            ->where('completed', 100)
+            ->where('updated_at', '>=', now()->subHours(24))
+            ->orderBy('updated_at', 'desc')
+            ->limit(3)
+            ->get();
+
+        foreach ($recentCompletions as $completion) {
+            $activities[] = [
+                'type' => 'progress',
+                'icon' => '📈',
+                'title' => $completion->student->name . ' menyelesaikan modul "' . $completion->module->title . '"',
+                'time' => $completion->updated_at->diffForHumans()
+            ];
+        }
+
+        // Add some sample activities if no real data
+        if (empty($activities)) {
+            $activities = [
+                [
+                    'type' => 'progress',
+                    'icon' => '📈',
+                    'title' => 'Ahmad Nurul menyelesaikan modul "Limas dan Prisma"',
+                    'time' => '2 menit yang lalu'
+                ],
+                [
+                    'type' => 'assignment',
+                    'icon' => '📝',
+                    'title' => '5 siswa mengumpulkan tugas "Analisis Bangun Ruang"',
+                    'time' => '15 menit yang lalu'
+                ],
+                [
+                    'type' => 'assessment',
+                    'icon' => '🎯',
+                    'title' => 'AI selesai menilai 12 essay geometri',
+                    'time' => '1 jam yang lalu'
+                ]
+            ];
+        }
+
+        return $activities;
+    }
+}

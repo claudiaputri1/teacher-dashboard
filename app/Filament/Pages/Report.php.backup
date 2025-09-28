@@ -1,0 +1,27 @@
+<?php
+
+namespace App\Filament\Pages;
+
+use App\Models\ClassSiswa;
+use Filament\Pages\Page;
+
+class Report extends Page
+{
+    protected static ?string $navigationLabel = 'Student Report';
+    protected static ?string $navigationIcon = 'heroicon-o-chart-bar';
+    protected static string $view = 'filament.pages.report';
+
+    public $classNames = [];
+    public $xpData = [];
+
+    public function mount()
+    {
+        $classes = ClassSiswa::with('students.progress')->get();
+        $this->classNames = $classes->pluck('name')->toArray();
+        $this->xpData = $classes->map(function($c){
+            return $c->students->sum(function($s){
+                return $s->progress->sum('xp');
+            });
+        })->toArray();
+    }
+}
