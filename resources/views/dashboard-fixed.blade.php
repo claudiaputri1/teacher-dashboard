@@ -57,10 +57,6 @@
                 <p style="color: #718096; margin-top: 4px;">Selamat datang kembali, {{ Auth::user()->name }}</p>
             </div>
             <div class="user-info">
-                <div>
-                    <p style="font-weight: 600;">{{ Auth::user()->name }}</p>
-                    <p style="font-size: 12px; color: #718096;">{{ Auth::user()->school_name ?? 'Guru' }}</p>
-                </div>
                 <div class="user-avatar">{{ strtoupper(substr(Auth::user()->name, 0, 2)) }}</div>
                 <form method="POST" action="{{ route('logout') }}" style="margin-left: 15px;">
                     @csrf
@@ -130,15 +126,14 @@
         <div id="classroom" class="page">
             <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title">Manajemen Kelas</h3>
-                    <button class="btn btn-primary" onclick="openModal('createClass')">+ Buat Kelas Baru</button>
+                    <h3 class="card-title">Daftar Kelas</h3>
                 </div>
                 
                 <div id="classes-grid" class="grid-3">
                     <div style="text-align: center; padding: 40px; color: #718096; grid-column: 1 / -1;">
                         <div style="font-size: 48px; margin-bottom: 16px;">🏫</div>
                         <p>Belum ada kelas</p>
-                        <p style="font-size: 12px;">Klik "Buat Kelas Baru" untuk memulai</p>
+                        <p style="font-size: 12px;">Kelas akan muncul setelah dibuat melalui sistem</p>
                     </div>
                 </div>
             </div>
@@ -377,10 +372,6 @@
                             <label class="form-label">Email</label>
                             <input type="email" id="profile-email" class="form-control" value="{{ Auth::user()->email }}">
                         </div>
-                        <div class="form-group">
-                            <label class="form-label">Asal Sekolah</label>
-                            <input type="text" id="profile-school" class="form-control" value="{{ Auth::user()->school_name ?? 'Belum diisi' }}">
-                        </div>
                         <button type="button" class="btn btn-primary" onclick="updateProfile()">Update Profil</button>
                     </form>
                 </div>
@@ -420,28 +411,6 @@
     </div>
 
     <!-- Modals -->
-    <div id="createClass" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Buat Kelas Baru</h3>
-                <span class="close" onclick="closeModal('createClass')">&times;</span>
-            </div>
-            <div class="form-group">
-                <label class="form-label">Nama Kelas</label>
-                <input type="text" class="form-control" placeholder="Contoh: XII IPA 1">
-            </div>
-            <div class="form-group">
-                <label class="form-label">Tahun Ajaran</label>
-                <input type="text" class="form-control" placeholder="2025/2026">
-            </div>
-            <div class="form-group">
-                <label class="form-label">Kapasitas Maksimal</label>
-                <input type="number" class="form-control" placeholder="30" value="30">
-            </div>
-            <button class="btn btn-primary">Buat Kelas</button>
-        </div>
-    </div>
-
     <div id="addStudent" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -800,7 +769,6 @@
         // Test function to update UI (for debugging)
         function testUpdateUI() {
             const testName = 'Test User';
-            const testSchool = 'Test School';
             
             // Update welcome message
             const welcomeElement = document.querySelector('.header p');
@@ -813,13 +781,7 @@
             if (userNameElement) {
                 userNameElement.textContent = testName;
             }
-            
-            // Update school name
-            const schoolElement = document.querySelector('.user-info div p:last-child');
-            if (schoolElement) {
-                schoolElement.textContent = testSchool;
-            }
-            
+          
             // Update avatar
             const avatarElement = document.querySelector('.user-avatar');
             if (avatarElement) {
@@ -1041,7 +1003,6 @@
         async function updateProfile() {
             const name = document.getElementById('profile-name').value;
             const email = document.getElementById('profile-email').value;
-            const school = document.getElementById('profile-school').value;
             
             // Validation
             if (!name.trim()) {
@@ -1065,7 +1026,6 @@
                     body: JSON.stringify({
                         name: name,
                         email: email,
-                        school_name: school
                     })
                 });
                 
@@ -1092,15 +1052,7 @@
                         userNameElement.textContent = name;
                         console.log('Updated user name');
                     }
-                    
-                    // Update school name in user-info section
-                    const schoolElement = document.querySelector('.user-info div p:last-child');
-                    console.log('School element found:', schoolElement);
-                    if (schoolElement) {
-                        schoolElement.textContent = school || 'Guru';
-                        console.log('Updated school name');
-                    }
-                    
+          
                     // Update avatar initials
                     const avatarElement = document.querySelector('.user-avatar');
                     console.log('Avatar element found:', avatarElement);
@@ -1119,7 +1071,7 @@
                         }, 300);
                     }
                     
-                    console.log('Profile updated successfully:', { name, email, school });
+                    console.log('Profile updated successfully:', { name, email });
                 } else {
                     const errorMessage = data.message || 'Gagal update profil!';
                     showNotification(errorMessage, 'error');

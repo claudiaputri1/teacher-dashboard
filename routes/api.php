@@ -50,8 +50,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Profile endpoints
     Route::post('/profile/update', [App\Http\Controllers\ProfileController::class, 'updateProfile']);
     
-    // Classes
-    Route::apiResource('classes', ClassController::class);
+    // Classes (read-only - no create)
+    Route::apiResource('classes', ClassController::class)->except(['store', 'destroy']);
     Route::post('classes/{class}/students', [ClassController::class, 'addStudent']);
     
     // Students

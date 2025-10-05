@@ -221,12 +221,6 @@
                 </div>
 
                 <div class="form-floating">
-                    <input type="text" id="school" name="school" value="{{ old('school') }}" placeholder=" " required>
-                    <label for="school">Asal Sekolah</label>
-                </div>
-
-
-                <div class="form-floating">
                     <input type="password" id="password" name="password" placeholder=" " required minlength="6">
                     <label for="password">Password</label>
                 </div>

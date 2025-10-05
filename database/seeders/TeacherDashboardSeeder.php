@@ -13,63 +13,12 @@ class TeacherDashboardSeeder extends Seeder
      */
     public function run(): void
     {
-        // Skip modules for now since table creation is having issues
-
-        // Get current user (teacher) if exists
-        $teacher = DB::table('teachers')->first();
+        // This seeder is disabled - using Supabase database with existing data
+        // Teachers, classes, and students should exist in Supabase
+        // and be managed through Supabase Auth and the application interface
         
-        if ($teacher) {
-            // Create sample class
-            $classId = DB::table('classes')->insertGetId([
-                'name' => 'XII IPA 1',
-                'teacher_id' => $teacher->id,
-                'academic_year' => '2025/2026',
-                'max_capacity' => 30,
-                'created_at' => now(),
-                'updated_at' => now()
-            ]);
-
-            // Create sample students
-            $students = [
-                [
-                    'name' => 'Ahmad Rizki Pratama',
-                    'email' => 'ahmad.rizki@student.com',
-                    'nis' => '12345001',
-                    'class_id' => $classId,
-                    'teacher_id' => $teacher->id,
-                    'status' => 'active',
-                    'created_at' => now(),
-                    'updated_at' => now()
-                ],
-                [
-                    'name' => 'Siti Nurhaliza',
-                    'email' => 'siti.nurhaliza@student.com',
-                    'nis' => '12345002',
-                    'class_id' => $classId,
-                    'teacher_id' => $teacher->id,
-                    'status' => 'active',
-                    'created_at' => now(),
-                    'updated_at' => now()
-                ],
-                [
-                    'name' => 'Budi Santoso',
-                    'email' => 'budi.santoso@student.com',
-                    'nis' => '12345003',
-                    'class_id' => $classId,
-                    'teacher_id' => $teacher->id,
-                    'status' => 'active',
-                    'created_at' => now(),
-                    'updated_at' => now()
-                ]
-            ];
-
-            foreach ($students as $studentData) {
-                $studentId = DB::table('students')->insertGetId($studentData);
-                
-                // Skip progress for now since modules table doesn't exist
-            }
-
-            // Skip assignments and other tables for now - focus on basic structure
-        }
+        // All data should be created through:
+        // 1. Supabase Auth for user authentication
+        // 2. Application interface for classes, assignments, etc.
     }
 }

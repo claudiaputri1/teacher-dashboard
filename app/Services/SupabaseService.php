@@ -11,8 +11,8 @@ class SupabaseService
 
     public function __construct()
     {
-        $this->baseUrl = config('services.supabase.url');
-        $this->apiKey = config('services.supabase.anon_key');
+        $this->baseUrl = config('https://odrnygorzfwgnbkibhvb.supabase.co');
+        $this->apiKey = config('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9kcm55Z29yemZ3Z25ia2liaHZiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg2OTEzOTksImV4cCI6MjA3NDI2NzM5OX0.dqAh9INof_xs0t1gVgfZH1nQbVQUODI9vRxhrzDH9zg');
         
         // Use local database if Supabase not configured
         $this->useLocalDb = empty($this->baseUrl) || empty($this->apiKey);

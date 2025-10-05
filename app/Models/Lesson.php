@@ -3,16 +3,17 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class Module extends Model
+class Lesson extends Model
 {
     /**
      * The table associated with the model.
      *
      * @var string
      */
-    protected $table = 'modules';
+    protected $table = 'lessons';
 
     /**
      * The primary key type.
@@ -35,11 +36,16 @@ class Module extends Model
      */
     protected $fillable = [
         'id',
+        'module_id',
         'slug',
         'title',
-        'description',
-        'icon_url',
+        'lesson_type',
         'order_index',
+        'content_markdown',
+        'video_url',
+        'scene_config',
+        'estimated_duration_minutes',
+        'xp_reward',
         'is_published',
     ];
 
@@ -49,24 +55,25 @@ class Module extends Model
      * @var array
      */
     protected $casts = [
+        'scene_config' => 'array',
         'is_published' => 'boolean',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
 
     /**
-     * Get the lessons for the module.
+     * Get the module that owns the lesson.
      */
-    public function lessons(): HasMany
+    public function module(): BelongsTo
     {
-        return $this->hasMany(Lesson::class, 'module_id')->orderBy('order_index');
+        return $this->belongsTo(Module::class, 'module_id');
     }
 
     /**
-     * Get the assignments for the module.
+     * Get the progress records for the lesson.
      */
-    public function assignments(): HasMany
+    public function progress(): HasMany
     {
-        return $this->hasMany(Assignment::class, 'module_id');
+        return $this->hasMany(StudentProgress::class, 'lesson_id');
     }
 }

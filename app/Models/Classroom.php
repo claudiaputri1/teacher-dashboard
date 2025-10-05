@@ -3,16 +3,18 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class Module extends Model
+class Classroom extends Model
 {
     /**
      * The table associated with the model.
      *
      * @var string
      */
-    protected $table = 'modules';
+    protected $table = 'classrooms';
 
     /**
      * The primary key type.
@@ -35,12 +37,13 @@ class Module extends Model
      */
     protected $fillable = [
         'id',
-        'slug',
-        'title',
+        'teacher_id',
+        'name',
         'description',
-        'icon_url',
-        'order_index',
-        'is_published',
+        'class_code',
+        'school_name',
+        'grade_level',
+        'is_active',
     ];
 
     /**
@@ -49,24 +52,34 @@ class Module extends Model
      * @var array
      */
     protected $casts = [
-        'is_published' => 'boolean',
+        'is_active' => 'boolean',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
 
     /**
-     * Get the lessons for the module.
+     * Get the teacher that owns the classroom.
      */
-    public function lessons(): HasMany
+    public function teacher(): BelongsTo
     {
-        return $this->hasMany(Lesson::class, 'module_id')->orderBy('order_index');
+        return $this->belongsTo(User::class, 'teacher_id');
     }
 
     /**
-     * Get the assignments for the module.
+     * Get the students in the classroom.
+     */
+    public function students(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'classroom_members', 'classroom_id', 'student_id')
+            ->withTimestamps()
+            ->withPivot('joined_at');
+    }
+
+    /**
+     * Get the assignments for the classroom.
      */
     public function assignments(): HasMany
     {
-        return $this->hasMany(Assignment::class, 'module_id');
+        return $this->hasMany(Assignment::class, 'classroom_id');
     }
 }

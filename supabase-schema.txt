@@ -1,0 +1,102 @@
+=== TABLES IN SUPABASE ===
+
+Table: profiles
+  id: uuid NOT NULL
+  email: text NULL
+  full_name: text NULL
+  avatar_url: text NULL
+  role: text NULL DEFAULT 'student'::text
+  school_name: text NULL
+  grade_level: text NULL
+  created_at: timestamp with time zone NULL DEFAULT now()
+  updated_at: timestamp with time zone NULL DEFAULT now()
+
+Table: classrooms
+  id: uuid NOT NULL DEFAULT gen_random_uuid()
+  teacher_id: uuid NOT NULL
+  name: text NOT NULL
+  description: text NULL
+  class_code: text NOT NULL
+  school_name: text NULL
+  grade_level: text NULL
+  is_active: boolean NULL DEFAULT true
+  created_at: timestamp with time zone NULL DEFAULT now()
+  updated_at: timestamp with time zone NULL DEFAULT now()
+
+Table: classroom_members
+  id: uuid NOT NULL DEFAULT gen_random_uuid()
+  classroom_id: uuid NOT NULL
+  student_id: uuid NOT NULL
+  joined_at: timestamp with time zone NULL DEFAULT now()
+
+Table: student_progress
+  id: uuid NOT NULL DEFAULT gen_random_uuid()
+  user_id: uuid NOT NULL
+  lesson_id: uuid NOT NULL
+  status: text NULL DEFAULT 'not_started'::text
+  completion_percentage: integer NULL
+  quiz_score: integer NULL
+  time_spent_seconds: integer NULL
+  completed_at: timestamp with time zone NULL
+  created_at: timestamp with time zone NULL DEFAULT now()
+  updated_at: timestamp with time zone NULL DEFAULT now()
+
+Table: assignments
+  id: uuid NOT NULL DEFAULT gen_random_uuid()
+  classroom_id: uuid NOT NULL
+  teacher_id: uuid NOT NULL
+  title: text NOT NULL
+  description: text NULL
+  module_id: uuid NULL
+  lesson_id: uuid NULL
+  assignment_type: text NOT NULL
+  due_date: timestamp with time zone NULL
+  max_score: integer NULL DEFAULT 100
+  rubric: jsonb NULL
+  is_published: boolean NULL DEFAULT false
+  created_at: timestamp with time zone NULL DEFAULT now()
+  updated_at: timestamp with time zone NULL DEFAULT now()
+
+Table: assignment_submissions
+  id: uuid NOT NULL DEFAULT gen_random_uuid()
+  assignment_id: uuid NOT NULL
+  student_id: uuid NOT NULL
+  submission_text: text NULL
+  submission_files: jsonb NULL
+  submitted_at: timestamp with time zone NULL DEFAULT now()
+  status: text NULL DEFAULT 'draft'::text
+  score: integer NULL
+  ai_feedback: jsonb NULL
+  teacher_feedback: text NULL
+  teacher_override_score: integer NULL
+  graded_at: timestamp with time zone NULL
+  graded_by: uuid NULL
+  updated_at: timestamp with time zone NULL DEFAULT now()
+
+Table: modules
+  id: uuid NOT NULL DEFAULT gen_random_uuid()
+  slug: text NOT NULL
+  title: text NOT NULL
+  description: text NULL
+  icon_url: text NULL
+  order_index: integer NOT NULL
+  is_published: boolean NULL DEFAULT true
+  created_at: timestamp with time zone NULL DEFAULT now()
+  updated_at: timestamp with time zone NULL DEFAULT now()
+
+Table: lessons
+  id: uuid NOT NULL DEFAULT gen_random_uuid()
+  module_id: uuid NOT NULL
+  slug: text NOT NULL
+  title: text NOT NULL
+  lesson_type: text NOT NULL
+  order_index: integer NOT NULL
+  content_markdown: text NULL
+  video_url: text NULL
+  scene_config: jsonb NULL
+  estimated_duration_minutes: integer NULL
+  xp_reward: integer NULL DEFAULT 10
+  is_published: boolean NULL DEFAULT true
+  created_at: timestamp with time zone NULL DEFAULT now()
+  updated_at: timestamp with time zone NULL DEFAULT now()
+

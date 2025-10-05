@@ -552,10 +552,6 @@
                 <p style="color: #718096; margin-top: 4px;">Selamat datang kembali, {{ Auth::user()->name }}</p>
             </div>
             <div class="user-info">
-                <div>
-                    <p style="font-weight: 600;">{{ Auth::user()->name }}</p>
-                    <p style="font-size: 12px; color: #718096;">{{ Auth::user()->school_name ?? 'Guru' }}</p>
-                </div>
                 <div class="user-avatar">{{ strtoupper(substr(Auth::user()->name, 0, 2)) }}</div>
                 <form method="POST" action="{{ route('logout') }}" style="margin-left: 15px;">
                     @csrf
@@ -620,15 +616,14 @@
         <div id="classroom" class="page">
             <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title">Manajemen Kelas</h3>
-                    <button class="btn btn-primary" onclick="openModal('createClass')">+ Buat Kelas Baru</button>
+                    <h3 class="card-title">Daftar Kelas</h3>
                 </div>
                 
                 <div id="classes-grid" class="grid-3">
                     <div style="text-align: center; padding: 40px; color: #718096; grid-column: 1 / -1;">
                         <div style="font-size: 48px; margin-bottom: 16px;">🏫</div>
                         <p>Belum ada kelas</p>
-                        <p style="font-size: 12px;">Klik "Buat Kelas Baru" untuk memulai</p>
+                        <p style="font-size: 12px;">Kelas akan muncul setelah dibuat melalui sistem</p>
                     </div>
                 </div>
             </div>
@@ -845,10 +840,6 @@
                         <label class="form-label">Email</label>
                         <input type="email" class="form-control" value="{{ Auth::user()->email }}">
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Asal Sekolah</label>
-                        <input type="text" class="form-control" value="{{ Auth::user()->school_name ?? 'Belum diisi' }}">
-                    </div>
                     <button class="btn btn-primary">Update Profil</button>
                 </div>
 
@@ -885,24 +876,6 @@
     </div>
 
     <!-- Modals -->
-    <div id="createClass" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Buat Kelas Baru</h3>
-                <span class="close" onclick="closeModal('createClass')">&times;</span>
-            </div>
-            <div class="form-group">
-                <label class="form-label">Nama Kelas</label>
-                <input type="text" class="form-control" placeholder="contoh: XII IPA 3">
-            </div>
-            <div class="form-group">
-                <label class="form-label">Tahun Ajaran</label>
-                <input type="text" class="form-control" placeholder="2025/2026">
-            </div>
-            <button class="btn btn-primary">Buat Kelas</button>
-        </div>
-    </div>
-
     <div id="addStudent" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -1006,7 +979,7 @@
                         <div style="text-align: center; padding: 40px; color: #718096; grid-column: 1 / -1;">
                             <div style="font-size: 48px; margin-bottom: 16px;">🏫</div>
                             <p>Belum ada kelas</p>
-                            <p style="font-size: 12px;">Klik "Buat Kelas Baru" untuk memulai</p>
+                            <p style="font-size: 12px;">Kelas akan muncul setelah dibuat melalui sistem</p>
                         </div>
                     `;
                 } else {

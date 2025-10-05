@@ -67,17 +67,11 @@ class ProfileController extends Controller
             $request->validate([
                 'name' => 'required|string|max:255',
                 'email' => 'required|string|email|max:255|unique:teachers,email,' . auth()->id(),
-                'school_name' => 'nullable|string|max:255',
             ]);
 
             $user = auth()->user();
             $user->name = $request->name;
             $user->email = $request->email;
-            
-            // Add school_name to fillable if not exists
-            if ($request->has('school_name')) {
-                $user->school_name = $request->school_name;
-            }
             
             $user->save();
 
@@ -87,7 +81,6 @@ class ProfileController extends Controller
                 'user' => [
                     'name' => $user->name,
                     'email' => $user->email,
-                    'school_name' => $user->school_name
                 ]
             ]);
 
