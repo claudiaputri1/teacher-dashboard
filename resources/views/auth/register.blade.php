@@ -211,8 +211,8 @@
                 @csrf
 
                 <div class="form-floating">
-                    <input type="text" id="name" name="name" value="{{ old('name') }}" placeholder=" " required autofocus>
-                    <label for="name">Nama Lengkap</label>
+                    <input type="text" id="full_name" name="full_name" value="{{ old('full_name') }}" placeholder=" " required autofocus>
+                    <label for="full_name">Nama Lengkap</label>
                 </div>
 
                 <div class="form-floating">

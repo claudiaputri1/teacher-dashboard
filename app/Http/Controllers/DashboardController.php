@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Student;
+use App\Models\User;
 use App\Models\Module;
 use App\Models\StudentProgress;
-use App\Models\ClassSiswa;
+use App\Models\Classroom;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -22,12 +22,18 @@ class DashboardController extends Controller
 
     public function getDashboardStats()
     {
-        $teacherId = auth()->id();
+        $teacher = auth()->user();
+        $teacherId = $teacher->user_id; // Use user_id from teachers table which references profiles
         
         // Debug: Log the teacher ID
         \Log::info('Dashboard stats requested for teacher ID: ' . $teacherId);
+        \Log::info('Teacher auth ID: ' . auth()->id());
+        \Log::info('Teacher user_id: ' . $teacher->user_id);
         
         $stats = $this->supabase->getDashboardStats($teacherId);
+        
+        // Debug: Log the stats data
+        \Log::info('Dashboard stats data: ', $stats);
         
         return response()->json([
             'total_students' => $stats['total_students'],
@@ -43,7 +49,8 @@ class DashboardController extends Controller
 
     public function getClassroomData()
     {
-        $teacherId = auth()->id();
+        $teacher = auth()->user();
+        $teacherId = $teacher->user_id;
         $classes = $this->supabase->getClasses($teacherId);
         $recentStudents = $this->supabase->getStudents($teacherId);
 
@@ -55,8 +62,9 @@ class DashboardController extends Controller
 
     public function getProgressData()
     {
-        $teacherId = auth()->id();
-        $students = $this->supabase->getStudents($teacherId);
+        $teacher = auth()->user();
+        $teacherId = $teacher->user_id;
+        $students = $this->supabase->getStudentsWithProgress($teacherId);
 
         return response()->json([
             'students' => $this->formatProgressData($students->data)
@@ -65,22 +73,36 @@ class DashboardController extends Controller
 
     public function getAssessmentData()
     {
-        $teacherId = auth()->id();
+        $teacher = auth()->user();
+        $teacherId = $teacher->user_id;
         $assessments = $this->supabase->getAIAssessments($teacherId);
-
-        return response()->json([
-            'pending_reviews' => count($assessments->data),
-            'assessments' => $this->formatAssessmentData($assessments->data)
-        ]);
-    }
-
-    public function getAssignmentData()
-    {
-        $teacherId = auth()->id();
         $assignments = $this->supabase->getAssignments($teacherId);
 
         return response()->json([
+            'assessments' => $this->formatAssessmentData($assessments->data),
             'assignments' => $this->formatAssignmentData($assignments->data)
+        ]);
+    }
+
+    public function getAnalyticsData()
+    {
+        $teacher = auth()->user();
+        $teacherId = $teacher->user_id;
+        
+        // Placeholder data - akan diimplementasi sesuai kebutuhan
+        return response()->json([
+            'stats' => [
+                'total_interactions' => 0,
+                'avg_session_time' => 0,
+                'completion_rate' => 0,
+                'satisfaction' => 0
+            ],
+            'trends' => [
+                'interactions_growth' => 0,
+                'time_growth' => 0,
+                'completion_growth' => 0,
+                'satisfaction_growth' => 0
+            ]
         ]);
     }
 
@@ -90,8 +112,8 @@ class DashboardController extends Controller
         return collect($classes)->map(function ($class) {
             return [
                 'id' => $class['id'],
-                'name' => $class['name'],
-                'students' => count($class['students'] ?? []),
+                'name' => $class['name'] ?? 'Unnamed Class',
+                'students' => $this->getStudentCountForClass($class['id']),
                 'progress' => $this->calculateClassProgress($class['id'])
             ];
         })->toArray();
@@ -102,27 +124,40 @@ class DashboardController extends Controller
         return collect($students)->map(function ($student) {
             return [
                 'id' => $student['id'],
-                'name' => $student['name'],
-                'nis' => $student['nis'],
-                'class' => $student['classes']['name'] ?? 'N/A',
+                'name' => $student['full_name'] ?? 'Unknown',
+                'school' => $student['school_name'] ?? 'N/A',
+                'class' => $student['grade_level'] ?? 'N/A',
                 'joined' => Carbon::parse($student['created_at'])->format('d M Y'),
-                'status' => $student['status']
+                'status' => 'active' // Default status since not in profiles table
             ];
         })->toArray();
+    }
+
+    private function getStudentCountForClass($classId)
+    {
+        // Get student count from classroom_members table
+        try {
+            $members = $this->supabase->makeRequest('GET', 'classroom_members', null, [
+                'classroom_id' => 'eq.' . $classId
+            ]);
+            return $members->successful() ? count($members->json()) : 0;
+        } catch (\Exception $e) {
+            return 0;
+        }
     }
 
     private function formatProgressData($students)
     {
         return collect($students)->map(function ($student) {
-            $progress = $student['student_progress'][0] ?? null;
+            $progress = $student['progress'] ?? [];
             return [
-                'name' => $student['name'],
-                'class' => $student['classes']['name'] ?? 'N/A',
+                'name' => $student['full_name'] ?? 'Unknown',
+                'class' => $student['school_name'] ?? 'N/A',
                 'modules_completed' => $this->getModulesCompleted($student['id']),
-                'study_time' => $this->formatStudyTime($progress['study_time_minutes'] ?? 0),
-                'level' => $this->formatLevel($progress['xp_earned'] ?? 0),
-                'streak' => '🔥 ' . ($progress['streak_days'] ?? 0) . ' hari',
-                'status' => $this->getPerformanceStatus($progress['progress_percentage'] ?? 0)
+                'study_time' => $this->formatStudyTime($progress['time_spent_seconds'] ?? 0),
+                'level' => $this->formatLevel($progress['quiz_score'] ?? 0),
+                'streak' => '🔥 0 hari', // Streak tidak ada di schema Supabase
+                'status' => $this->getPerformanceStatus($progress['completion_percentage'] ?? 0)
             ];
         })->toArray();
     }
@@ -158,11 +193,11 @@ class DashboardController extends Controller
         return collect($assessments)->map(function ($assessment) {
             return [
                 'id' => $assessment['id'],
-                'student' => $assessment['students']['name'] ?? 'N/A',
-                'assignment' => $assessment['assignments']['title'] ?? 'N/A',
+                'student' => $assessment['student_name'] ?? 'N/A',
+                'assignment' => $assessment['assignment_title'] ?? 'N/A',
                 'ai_score' => $assessment['ai_score'] ?? 0,
                 'confidence' => $assessment['confidence_score'] ?? 0,
-                'status' => $assessment['status']
+                'status' => $assessment['status'] ?? 'pending'
             ];
         })->toArray();
     }
@@ -193,16 +228,18 @@ class DashboardController extends Controller
         return rand(5, 15) . '/' . rand(15, 20);
     }
 
-    private function formatStudyTime($minutes)
+    private function formatStudyTime($seconds)
     {
-        $hours = floor($minutes / 60);
-        return $hours . '.' . ($minutes % 60) . ' jam';
-    }
-
-    private function formatLevel($xp)
-    {
-        $level = floor($xp / 100) + 1;
-        return "Level $level ($xp XP)";
+        if ($seconds < 60) {
+            return $seconds . ' detik';
+        } elseif ($seconds < 3600) {
+            $minutes = floor($seconds / 60);
+            return $minutes . ' menit';
+        } else {
+            $hours = floor($seconds / 3600);
+            $remainingMinutes = floor(($seconds % 3600) / 60);
+            return $hours . 'j ' . $remainingMinutes . 'm';
+        }
     }
 
     private function getPerformanceStatus($percentage)

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
+use App\Models\Classroom;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -13,10 +15,13 @@ class StudentController extends Controller
     {
         try {
             $teacherId = auth()->id();
-            $students = DB::table('students')
-                ->leftJoin('classes', 'students.class_id', '=', 'classes.id')
-                ->where('students.teacher_id', $teacherId)
-                ->select('students.*', 'classes.name as class_name')
+            
+            // Get students from profiles table through classroom_members
+            $students = User::students()
+                ->leftJoin('classroom_members', 'profiles.id', '=', 'classroom_members.student_id')
+                ->leftJoin('classrooms', 'classroom_members.classroom_id', '=', 'classrooms.id')
+                ->where('classrooms.teacher_id', $teacherId)
+                ->select('profiles.*', 'classrooms.name as class_name', 'classroom_members.joined_at')
                 ->get();
             
             return response()->json([
@@ -35,29 +40,34 @@ class StudentController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'nullable|email|unique:students,email',
-            'nis' => 'nullable|string|max:50',
-            'class_id' => 'nullable|integer|exists:classes,id'
+            'full_name' => 'required|string|max:255',
+            'email' => 'required|email|unique:profiles,email',
+            'school_name' => 'nullable|string|max:255',
+            'grade_level' => 'nullable|string|max:50',
+            'classroom_id' => 'nullable|string|exists:classrooms,id'
         ]);
 
         try {
-            $studentId = DB::table('students')->insertGetId([
-                'name' => $request->name,
+            // Create student profile
+            $student = User::create([
+                'id' => \Str::uuid(),
+                'full_name' => $request->full_name,
                 'email' => $request->email,
-                'nis' => $request->nis,
-                'class_id' => $request->class_id,
-                'teacher_id' => auth()->id(),
-                'status' => 'active',
-                'created_at' => now(),
-                'updated_at' => now()
+                'role' => 'student',
+                'school_name' => $request->school_name,
+                'grade_level' => $request->grade_level,
             ]);
 
-            $student = DB::table('students')
-                ->leftJoin('classes', 'students.class_id', '=', 'classes.id')
-                ->where('students.id', $studentId)
-                ->select('students.*', 'classes.name as class_name')
-                ->first();
+            // Add to classroom if specified
+            if ($request->classroom_id) {
+                DB::table('classroom_members')->insert([
+                    'classroom_id' => $request->classroom_id,
+                    'student_id' => $student->id,
+                    'joined_at' => now(),
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+            }
 
             return response()->json([
                 'success' => true,
@@ -75,8 +85,27 @@ class StudentController extends Controller
 
     public function show($id)
     {
-        // TODO: Implement show method
-        return response()->json(['message' => 'Show student method not implemented yet']);
+        try {
+            $student = User::students()->find($id);
+            
+            if (!$student) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Student not found'
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => $student->getStudentProfile()
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch student',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     public function update(Request $request, $id)
@@ -93,7 +122,31 @@ class StudentController extends Controller
 
     public function getProgress($studentId)
     {
-        // TODO: Implement get student progress
-        return response()->json(['message' => 'Get student progress method not implemented yet']);
+        try {
+            $student = User::students()->find($studentId);
+            
+            if (!$student) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Student not found'
+                ], 404);
+            }
+
+            $progress = $student->progress()->with('lesson.module')->get();
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'student' => $student->getStudentProfile(),
+                    'progress' => $progress
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch student progress',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }

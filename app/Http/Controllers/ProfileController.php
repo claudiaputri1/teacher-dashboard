@@ -66,11 +66,11 @@ class ProfileController extends Controller
         try {
             $request->validate([
                 'name' => 'required|string|max:255',
-                'email' => 'required|string|email|max:255|unique:teachers,email,' . auth()->id(),
+                'email' => 'required|string|email|max:255|unique:teacher,email,' . auth()->id(),
             ]);
 
             $user = auth()->user();
-            $user->name = $request->name;
+            $user->name = $request->full_name;
             $user->email = $request->email;
             
             $user->save();
@@ -79,7 +79,7 @@ class ProfileController extends Controller
                 'success' => true,
                 'message' => 'Profil berhasil diupdate',
                 'user' => [
-                    'name' => $user->name,
+                    'name' => $user->full_name,
                     'email' => $user->email,
                 ]
             ]);

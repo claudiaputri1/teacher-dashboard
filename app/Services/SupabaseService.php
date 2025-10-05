@@ -11,14 +11,14 @@ class SupabaseService
 
     public function __construct()
     {
-        $this->baseUrl = config('https://odrnygorzfwgnbkibhvb.supabase.co');
-        $this->apiKey = config('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9kcm55Z29yemZ3Z25ia2liaHZiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg2OTEzOTksImV4cCI6MjA3NDI2NzM5OX0.dqAh9INof_xs0t1gVgfZH1nQbVQUODI9vRxhrzDH9zg');
+        $this->baseUrl = 'https://odrnygorzfwgnbkibhvb.supabase.co';
+        $this->apiKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9kcm55Z29yemZ3Z25ia2liaHZiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg2OTEzOTksImV4cCI6MjA3NDI2NzM5OX0.dqAh9INof_xs0t1gVgfZH1nQbVQUODI9vRxhrzDH9zg';
         
         // Use local database if Supabase not configured
         $this->useLocalDb = empty($this->baseUrl) || empty($this->apiKey);
     }
 
-    private function makeRequest($method, $table, $data = null, $filters = [])
+    public function makeRequest($method, $table, $data = null, $filters = [])
     {
         $url = $this->baseUrl . '/rest/v1/' . $table;
         
@@ -58,71 +58,155 @@ class SupabaseService
     // Dashboard Statistics
     public function getDashboardStats($teacherId)
     {
-        // Use local database for now since migration is having issues
         try {
-            // Return sample data that looks realistic
+            \Log::info('Getting dashboard stats for teacher: ' . $teacherId);
+            
+            // Get real data from Supabase
+            $studentsResponse = $this->makeRequest('GET', 'profiles', null, [
+                'role' => 'eq.student',
+                'select' => 'id,full_name,created_at'
+            ]);
+            
+            \Log::info('Students response status: ' . $studentsResponse->status());
+            \Log::info('Students response body: ' . $studentsResponse->body());
+            
+            $progressResponse = $this->makeRequest('GET', 'student_progress', null, [
+                'select' => 'completion_percentage,time_spent_seconds,updated_at'
+            ]);
+            
+            $assignmentsResponse = $this->makeRequest('GET', 'assignments', null, [
+                'teacher_id' => 'eq.' . $teacherId,
+                'select' => 'id,is_published,created_at'
+            ]);
+            
+            $students = $studentsResponse->successful() ? $studentsResponse->json() : [];
+            $progress = $progressResponse->successful() ? $progressResponse->json() : [];
+            $assignments = $assignmentsResponse->successful() ? $assignmentsResponse->json() : [];
+            
+            // Calculate real statistics
+            $totalStudents = count($students);
+            $avgProgress = $progress ? collect($progress)->avg('completion_percentage') : 0;
+            $pendingTasks = collect($assignments)->where('is_published', false)->count();
+            $engagementRate = $this->calculateEngagementRate($teacherId);
+            
+            // Calculate changes
+            $studentsChange = $this->getStudentsChange($teacherId);
+            $progressChange = $this->getProgressChange($teacherId);
+            $tasksChange = $this->getTasksChange($teacherId);
+            $engagementChange = $this->getEngagementChange($teacherId);
+            
             return [
-                'total_students' => 3,
-                'avg_progress' => 84.7,
-                'pending_tasks' => 2,
-                'engagement_rate' => 87.5,
-                'students_change' => '+2 siswa baru',
-                'progress_change' => '+12% minggu ini',
-                'tasks_change' => '2 perlu review',
-                'engagement_change' => 'Engagement tinggi'
+                'total_students' => $totalStudents,
+                'avg_progress' => round($avgProgress, 1),
+                'pending_tasks' => $pendingTasks,
+                'engagement_rate' => $engagementRate,
+                'students_change' => $studentsChange,
+                'progress_change' => $progressChange,
+                'tasks_change' => $tasksChange,
+                'engagement_change' => $engagementChange
             ];
         } catch (\Exception $e) {
+            \Log::error('Error getting dashboard stats: ' . $e->getMessage());
             // Return empty data if fails
             return [
                 'total_students' => 0,
                 'avg_progress' => 0,
                 'pending_tasks' => 0,
                 'engagement_rate' => 0,
-                'students_change' => 'Tidak ada data',
-                'progress_change' => 'Tidak ada data',
-                'tasks_change' => 'Tidak ada data',
-                'engagement_change' => 'Tidak ada data'
+                'students_change' => 'Error loading data',
+                'progress_change' => 'Error loading data',
+                'tasks_change' => 'Error loading data',
+                'engagement_change' => 'Error loading data'
             ];
         }
     }
 
-    // Get Classes
+    // Get Classes (using classrooms table)
     public function getClasses($teacherId)
     {
         try {
-            $response = $this->makeRequest('GET', 'classes', null, ['teacher_id' => 'eq.' . $teacherId]);
-            return (object) ['data' => $response->successful() ? $response->json() : []];
-        } catch (\Exception $e) {
-            return (object) ['data' => []];
-        }
-    }
-
-    // Get Students
-    public function getStudents($teacherId, $classId = null)
-    {
-        try {
-            $filters = ['teacher_id' => 'eq.' . $teacherId];
-            if ($classId) {
-                $filters['class_id'] = 'eq.' . $classId;
-            }
-            
-            $response = $this->makeRequest('GET', 'students', null, $filters);
-            return (object) ['data' => $response->successful() ? $response->json() : []];
-        } catch (\Exception $e) {
-            return (object) ['data' => []];
-        }
-    }
-
-    // Get Students with Progress
-    public function getStudentsWithProgress($teacherId)
-    {
-        try {
-            $response = $this->makeRequest('GET', 'students', null, [
+            $response = $this->makeRequest('GET', 'classrooms', null, [
                 'teacher_id' => 'eq.' . $teacherId,
-                'select' => 'id,name,nis,classes(name),student_progress(progress_percentage,study_time_minutes,xp_earned,streak_days)'
+                'select' => 'id,name,description,created_at'
             ]);
             return (object) ['data' => $response->successful() ? $response->json() : []];
         } catch (\Exception $e) {
+            \Log::error('Error getting classes: ' . $e->getMessage());
+            return (object) ['data' => []];
+        }
+    }
+
+    // Get Students (using profiles table with role='student')
+    public function getStudents($teacherId, $classId = null)
+    {
+        try {
+            // Jika ada classId, ambil siswa dari classroom tertentu
+            if ($classId) {
+                $response = $this->makeRequest('GET', 'classroom_members', null, [
+                    'classroom_id' => 'eq.' . $classId,
+                    'select' => 'student_id,joined_at,profiles!student_id(id,full_name,email,school_name,grade_level,created_at)'
+                ]);
+                
+                if ($response->successful()) {
+                    $members = $response->json();
+                    $students = collect($members)->map(function ($member) {
+                        $profile = $member['profiles'] ?? [];
+                        return array_merge($profile, [
+                            'joined_at' => $member['joined_at']
+                        ]);
+                    })->toArray();
+                    
+                    return (object) ['data' => $students];
+                }
+            }
+            
+            // Jika tidak ada classId, ambil semua siswa
+            $filters = [
+                'role' => 'eq.student',
+                'select' => 'id,full_name,email,school_name,grade_level,created_at'
+            ];
+            
+            $response = $this->makeRequest('GET', 'profiles', null, $filters);
+            return (object) ['data' => $response->successful() ? $response->json() : []];
+        } catch (\Exception $e) {
+            \Log::error('Error getting students: ' . $e->getMessage());
+            return (object) ['data' => []];
+        }
+    }
+
+    // Get Students with Progress (using profiles and student_progress tables)
+    public function getStudentsWithProgress($teacherId)
+    {
+        try {
+            // Get students from profiles table
+            $studentsResponse = $this->makeRequest('GET', 'profiles', null, [
+                'role' => 'eq.student',
+                'select' => 'id,full_name,school_name,grade_level'
+            ]);
+            
+            // Get progress data
+            $progressResponse = $this->makeRequest('GET', 'student_progress', null, [
+                'select' => 'user_id,completion_percentage,time_spent_seconds,updated_at'
+            ]);
+            
+            $students = $studentsResponse->successful() ? $studentsResponse->json() : [];
+            $progressData = $progressResponse->successful() ? $progressResponse->json() : [];
+            
+            // Merge student data with progress
+            $studentsWithProgress = collect($students)->map(function ($student) use ($progressData) {
+                $progress = collect($progressData)->firstWhere('user_id', $student['id']);
+                return array_merge($student, [
+                    'progress' => $progress ?: [
+                        'completion_percentage' => 0,
+                        'time_spent_seconds' => 0,
+                        'quiz_score' => 0
+                    ]
+                ]);
+            });
+            
+            return (object) ['data' => $studentsWithProgress->toArray()];
+        } catch (\Exception $e) {
+            \Log::error('Error getting students with progress: ' . $e->getMessage());
             return (object) ['data' => []];
         }
     }
@@ -141,61 +225,82 @@ class SupabaseService
         }
     }
 
-    // Get AI Assessments
+    // Get AI Assessments (using assignment_submissions table)
     public function getAIAssessments($teacherId)
     {
         try {
-            $response = $this->makeRequest('GET', 'ai_assessments', null, [
-                'teacher_id' => 'eq.' . $teacherId,
-                'status' => 'eq.pending_review',
-                'select' => 'id,ai_score,confidence_score,status,students(name),assignments(title),created_at'
+            $response = $this->makeRequest('GET', 'assignment_submissions', null, [
+                'select' => 'id,ai_score,confidence_score,status,student_id,assignment_id,created_at'
             ]);
-            return (object) ['data' => $response->successful() ? $response->json() : []];
+            
+            if (!$response->successful()) {
+                return (object) ['data' => []];
+            }
+            
+            $submissions = $response->json();
+            
+            // Get additional data for each submission
+            $enrichedSubmissions = collect($submissions)->map(function ($submission) {
+                // Get student name
+                $studentResponse = $this->makeRequest('GET', 'profiles', null, [
+                    'id' => 'eq.' . $submission['student_id'],
+                    'select' => 'full_name'
+                ]);
+                $student = $studentResponse->successful() ? $studentResponse->json()[0] ?? null : null;
+                
+                // Get assignment title
+                $assignmentResponse = $this->makeRequest('GET', 'assignments', null, [
+                    'id' => 'eq.' . $submission['assignment_id'],
+                    'select' => 'title'
+                ]);
+                $assignment = $assignmentResponse->successful() ? $assignmentResponse->json()[0] ?? null : null;
+                
+                return array_merge($submission, [
+                    'student_name' => $student['full_name'] ?? 'Unknown',
+                    'assignment_title' => $assignment['title'] ?? 'Unknown'
+                ]);
+            });
+            
+            return (object) ['data' => $enrichedSubmissions->toArray()];
         } catch (\Exception $e) {
+            \Log::error('Error getting AI assessments: ' . $e->getMessage());
             return (object) ['data' => []];
         }
     }
-
     // Calculate Engagement Rate
     private function calculateEngagementRate($teacherId)
     {
         try {
-            $response = $this->makeRequest('GET', 'student_activities', null, ['teacher_id' => 'eq.' . $teacherId]);
+            // Hitung engagement berdasarkan assignment submissions
+            $response = $this->makeRequest('GET', 'assignment_submissions', null, [
+                'select' => 'id,status,submitted_at'
+            ]);
             if (!$response->successful()) return 0;
-
-            $activities = $response->json();
-            $studentsResponse = $this->makeRequest('GET', 'students', null, ['teacher_id' => 'eq.' . $teacherId]);
             
-            if (!$studentsResponse->successful()) return 0;
+            $submissions = $response->json();
+            $totalSubmissions = count($submissions);
+            $submittedCount = collect($submissions)->where('status', 'submitted')->count();
             
-            $totalStudents = count($studentsResponse->json());
-            if ($totalStudents == 0) return 0;
-
-            $activeStudents = collect($activities)
-                ->unique('student_id')
-                ->count();
-
-            return round(($activeStudents / $totalStudents) * 100, 1);
+            return $totalSubmissions > 0 ? round(($submittedCount / $totalSubmissions) * 100, 1) : 0;
         } catch (\Exception $e) {
             return 0;
         }
     }
-
     // Get Students Change
     private function getStudentsChange($teacherId)
     {
         try {
-            $response = $this->makeRequest('GET', 'students', null, [
-                'teacher_id' => 'eq.' . $teacherId,
+            $response = $this->makeRequest('GET', 'profiles', null, [
+                'role' => 'eq.student',
                 'created_at' => 'gte.' . now()->subWeek()->toISOString()
             ]);
             
-            if (!$response->successful()) return 'Tidak ada data';
+            if (!$response->successful()) return "Tidak ada data";
             
             $newStudents = count($response->json());
-            return $newStudents > 0 ? "+{$newStudents} siswa baru" : 'Tidak ada siswa baru';
+            return $newStudents > 0 ? "+{$newStudents} siswa baru minggu ini" : "Tidak ada siswa baru minggu ini";
         } catch (\Exception $e) {
-            return 'Tidak ada data';
+            return "Tidak ada data";
         }
     }
 

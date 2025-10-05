@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\Teacher;
 use App\Models\User;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
@@ -11,7 +12,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
 use Illuminate\View\View;
-use App\Services\SupabaseService;
+use Illuminate\Support\Str;
 
 class RegisteredUserController extends Controller
 {
@@ -31,31 +32,33 @@ class RegisteredUserController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
+            'full_name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.Teacher::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
-        $user = User::create([
-            'name' => $request->name,
+        // Create teacher record
+        $teacher = Teacher::create([
+            'id' => Str::uuid(),
+            'full_name' => $request->full_name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'is_active' => true,
         ]);
 
-        // Sync user to Supabase
-        $this->supabase->getClient()
-            ->from('teachers')
-            ->insert([
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'created_at' => $user->created_at->toISOString(),
-                'updated_at' => $user->updated_at->toISOString(),
-            ])
-            ->execute();
+        // Create corresponding profile in profiles table
+        $profile = User::create([
+            'id' => Str::uuid(),
+            'email' => $request->email,
+            'full_name' => $request->full_name,
+            'role' => 'teacher',
+        ]);
 
-        event(new Registered($user));
-        Auth::login($user);
+        // Link teacher to profile
+        $teacher->update(['user_id' => $profile->id]);
+
+        event(new Registered($teacher));
+        Auth::login($teacher);
 
         return redirect(route('dashboard', absolute: false));
     }

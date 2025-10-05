@@ -90,17 +90,25 @@ class User extends Authenticatable
     }
 
     /**
-     * Get classrooms where this user is a student (through classroom_members)
+     * Get the classrooms where this user is a member (for students)
      */
-    public function enrolledClassrooms()
+    public function memberClassrooms()
     {
         return $this->belongsToMany(Classroom::class, 'classroom_members', 'student_id', 'classroom_id')
-            ->withTimestamps()
-            ->withPivot('joined_at');
+                    ->withTimestamps()
+                    ->withPivot('joined_at');
     }
 
     /**
-     * Get student progress records for this user
+     * Get the classroom memberships for this user
+     */
+    public function classroomMemberships()
+    {
+        return $this->hasMany(ClassroomMember::class, 'student_id');
+    }
+
+    /**
+     * Get the progress records for this user
      */
     public function progress()
     {
@@ -142,7 +150,7 @@ class User extends Authenticatable
     /**
      * Scope to get only teachers
      */
-    public function scopeTeachers($query)
+    public function scopeTeacher($query)
     {
         return $query->where('role', 'teacher');
     }
@@ -153,5 +161,50 @@ class User extends Authenticatable
     public function scopeStudents($query)
     {
         return $query->where('role', 'student');
+    }
+
+    /**
+     * Get all students (static method for convenience)
+     */
+    public static function getStudents()
+    {
+        return self::students()->get();
+    }
+
+    /**
+     * Get students by grade level
+     */
+    public function scopeByGradeLevel($query, $gradeLevel)
+    {
+        return $query->where('grade_level', $gradeLevel);
+    }
+
+    /**
+     * Get students by school name
+     */
+    public function scopeBySchool($query, $schoolName)
+    {
+        return $query->where('school_name', $schoolName);
+    }
+
+    /**
+     * Get student's full profile data
+     */
+    public function getStudentProfile()
+    {
+        if (!$this->isStudent()) {
+            return null;
+        }
+
+        return [
+            'id' => $this->id,
+            'email' => $this->email,
+            'full_name' => $this->full_name,
+            'avatar_url' => $this->avatar_url,
+            'school_name' => $this->school_name,
+            'grade_level' => $this->grade_level,
+            'created_at' => $this->created_at,
+            'updated_at' => $this->updated_at,
+        ];
     }
 }

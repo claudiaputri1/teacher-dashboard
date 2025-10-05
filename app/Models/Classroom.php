@@ -38,7 +38,7 @@ class Classroom extends Model
     protected $fillable = [
         'id',
         'teacher_id',
-        'name',
+        'full_name',
         'description',
         'class_code',
         'school_name',
@@ -81,5 +81,13 @@ class Classroom extends Model
     public function assignments(): HasMany
     {
         return $this->hasMany(Assignment::class, 'classroom_id');
+    }
+
+    /**
+     * Get the classroom memberships.
+     */
+    public function memberships(): HasMany
+    {
+        return $this->hasMany(ClassroomMember::class, 'classroom_id');
     }
 }

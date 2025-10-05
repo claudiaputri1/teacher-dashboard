@@ -616,7 +616,7 @@
         <div id="classroom" class="page">
             <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title">Daftar Kelas</h3>
+                    <h3 class="card-title">Daftar Sekolah</h3>
                 </div>
                 
                 <div id="classes-grid" class="grid-3">
@@ -630,15 +630,15 @@
 
             <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title">Siswa Terbaru</h3>
+                    <h3 class="card-title">Daftar Siswa</h3>
                     <button class="btn btn-success" onclick="openModal('addStudent')">+ Tambah Siswa</button>
                 </div>
                 <table class="table">
                     <thead>
                         <tr>
                             <th>Nama</th>
-                            <th>NIS</th>
-                            <th>Kelas</th>
+                            <th>Email</th>
+                            <th>Sekolah</th>
                             <th>Tanggal Bergabung</th>
                             <th>Status</th>
                             <th>Aksi</th>
@@ -869,7 +869,6 @@
                             <option>English</option>
                         </select>
                     </div>
-                    <button class="btn btn-success">Simpan Preferensi</button>
                 </div>
             </div>
         </div>
