@@ -50,10 +50,14 @@
         <header class="header">
             <div>
                 <h1 id="page-title">Dashboard Guru</h1>
-                <p style="color: #718096; margin-top: 4px;">Selamat datang kembali, {{ Auth::user()->name }}</p>
+                <p style="color: #718096; margin-top: 4px;">Selamat datang kembali, {{ Auth::user()->full_name ?? Auth::user()->name ?? 'Guru' }}</p>
             </div>
             <div class="user-info">
-                <div class="user-avatar">{{ strtoupper(substr(Auth::user()->name, 0, 2)) }}</div>
+                <div class="user-avatar">{{ strtoupper(substr(Auth::user()->full_name ?? Auth::user()->name ?? 'UN', 0, 2)) }}</div>
+                <div class="user-details">
+                    <div class="user-name">{{ Auth::user()->full_name ?? Auth::user()->name ?? 'Nama Guru' }}</div>
+                    <div class="user-email">{{ Auth::user()->email ?? 'email@example.com' }}</div>
+                </div>
                 <form method="POST" action="{{ route('logout') }}" style="margin-left: 15px;">
                     @csrf
                     <button type="submit" class="btn btn-danger" style="font-size: 12px; padding: 6px 12px;">
@@ -298,7 +302,7 @@
                     <form id="profile-form">
                         <div class="form-group">
                             <label class="form-label">Nama Lengkap</label>
-                            <input type="text" id="profile-name" class="form-control" value="{{ Auth::user()->name }}">
+                            <input type="text" id="profile-name" class="form-control" value="{{ Auth::user()->full_name ?? Auth::user()->name }}">
                         </div>
                         <div class="form-group">
                             <label class="form-label">Email</label>
@@ -971,7 +975,7 @@
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
                     },
                     body: JSON.stringify({
-                        name: name,
+                        full_name: name,
                         email: email,
                     })
                 });
@@ -992,12 +996,20 @@
                         console.log('Updated welcome message');
                     }
                     
-                    // Update user name in user-info section
-                    const userNameElement = document.querySelector('.user-info div p:first-child');
+                    // Update user name in user-details section
+                    const userNameElement = document.querySelector('.user-name');
                     console.log('User name element found:', userNameElement);
                     if (userNameElement) {
                         userNameElement.textContent = name;
                         console.log('Updated user name');
+                    }
+                    
+                    // Update user email in user-details section
+                    const userEmailElement = document.querySelector('.user-email');
+                    console.log('User email element found:', userEmailElement);
+                    if (userEmailElement) {
+                        userEmailElement.textContent = email;
+                        console.log('Updated user email');
                     }
           
                     // Update avatar initials

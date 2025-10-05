@@ -38,12 +38,15 @@ Route::middleware('auth')->group(function () {
     
     // Debug route to test authentication
     Route::get('/debug/auth', function() {
+        $user = auth()->user();
         return response()->json([
             'authenticated' => auth()->check(),
             'user_id' => auth()->id(),
-            'user_name' => auth()->user()?->name ?? 'No name',
-            'user_full_name' => auth()->user()?->full_name ?? 'No full_name',
-            'user_email' => auth()->user()?->email ?? 'No email'
+            'user_name' => $user?->name ?? 'No name',
+            'user_full_name' => $user?->full_name ?? 'No full_name',
+            'user_email' => $user?->email ?? 'No email',
+            'user_data' => $user ? $user->toArray() : null,
+            'user_class' => $user ? get_class($user) : null
         ]);
     });
     
@@ -88,6 +91,32 @@ Route::middleware('auth')->group(function () {
                 'trace' => $e->getTraceAsString()
             ]);
         }
+    });
+    
+    // Debug route to test profile update
+    Route::post('/debug/profile', function(\Illuminate\Http\Request $request) {
+        $controller = new \App\Http\Controllers\ProfileController();
+        try {
+            return $controller->updateProfile($request);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
+    });
+    
+    // Debug route to check teacher-profile relationship
+    Route::get('/debug/teacher-profile', function() {
+        $teacher = auth()->user();
+        return response()->json([
+            'teacher_id' => $teacher->id,
+            'teacher_user_id' => $teacher->user_id,
+            'teacher_data' => $teacher->toArray(),
+            'has_profile' => $teacher->profile ? true : false,
+            'profile_data' => $teacher->profile ? $teacher->profile->toArray() : null,
+        ]);
     });
 });
 

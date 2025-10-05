@@ -64,23 +64,66 @@ class ProfileController extends Controller
     public function updateProfile(Request $request)
     {
         try {
-            $request->validate([
-                'name' => 'required|string|max:255',
-                'email' => 'required|string|email|max:255|unique:teacher,email,' . auth()->id(),
-            ]);
-
-            $user = auth()->user();
-            $user->name = $request->full_name;
-            $user->email = $request->email;
+            \Log::info('Profile update request data:', $request->all());
+            \Log::info('Current user ID:', [auth()->id()]);
+            \Log::info('Current user data:', [auth()->user()->toArray()]);
             
-            $user->save();
+            // Custom validation for email uniqueness
+            $teacher = auth()->user();
+            $rules = [
+                'full_name' => 'required|string|max:255',
+                'email' => 'required|string|email|max:255',
+            ];
+            
+            // Check email uniqueness in both teachers and profiles tables
+            $emailExists = false;
+            
+            // Check in teachers table (exclude current teacher)
+            if (\App\Models\Teacher::where('email', $request->email)->where('id', '!=', $teacher->id)->exists()) {
+                $emailExists = true;
+            }
+            
+            // Check in profiles table (exclude current teacher's profile if exists)
+            if ($teacher->user_id) {
+                if (\App\Models\User::where('email', $request->email)->where('id', '!=', $teacher->user_id)->exists()) {
+                    $emailExists = true;
+                }
+            }
+            
+            if ($emailExists) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation error',
+                    'errors' => ['email' => ['Email sudah digunakan oleh user lain.']]
+                ], 422);
+            }
+            
+            $request->validate($rules);
+
+            $teacher = auth()->user(); // This is Teacher model
+            
+            // Update teacher table
+            $teacher->full_name = $request->full_name;
+            $teacher->email = $request->email;
+            $teacher->save();
+            
+            // Also update the linked profile if exists
+            if ($teacher->user_id && $teacher->profile) {
+                $profile = $teacher->profile;
+                $profile->full_name = $request->full_name;
+                $profile->email = $request->email;
+                $profile->save();
+                \Log::info('Updated linked profile:', $profile->toArray());
+            }
+            
+            \Log::info('Updated teacher data:', $teacher->fresh()->toArray());
 
             return response()->json([
                 'success' => true,
                 'message' => 'Profil berhasil diupdate',
                 'user' => [
-                    'name' => $user->full_name,
-                    'email' => $user->email,
+                    'name' => $teacher->full_name,
+                    'email' => $teacher->email,
                 ]
             ]);
 

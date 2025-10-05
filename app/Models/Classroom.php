@@ -38,7 +38,7 @@ class Classroom extends Model
     protected $fillable = [
         'id',
         'teacher_id',
-        'full_name',
+        'name',
         'description',
         'class_code',
         'school_name',
