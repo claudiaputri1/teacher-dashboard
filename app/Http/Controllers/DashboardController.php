@@ -250,24 +250,4 @@ class DashboardController extends Controller
         return 'Needs Improvement';
     }
 
-    public function getAnalyticsData()
-    {
-        $teacherId = auth()->id();
-        
-        // Get analytics data from Supabase or return dummy data
-        return response()->json([
-            'stats' => [
-                'total_interactions' => 1250,
-                'avg_session_time' => 45,
-                'completion_rate' => 78,
-                'satisfaction' => 4.2
-            ],
-            'trends' => [
-                'interactions_growth' => 15,
-                'time_growth' => 8,
-                'completion_growth' => 12,
-                'satisfaction_growth' => 5
-            ]
-        ]);
-    }
 }
