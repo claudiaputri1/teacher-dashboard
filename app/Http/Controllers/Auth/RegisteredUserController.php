@@ -46,17 +46,6 @@ class RegisteredUserController extends Controller
             'is_active' => true,
         ]);
 
-        // Create corresponding profile in profiles table
-        $profile = User::create([
-            'id' => Str::uuid(),
-            'email' => $request->email,
-            'full_name' => $request->full_name,
-            'role' => 'teacher',
-        ]);
-
-        // Link teacher to profile
-        $teacher->update(['user_id' => $profile->id]);
-
         event(new Registered($teacher));
         Auth::login($teacher);
 
