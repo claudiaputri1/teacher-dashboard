@@ -15,20 +15,20 @@ try {
         echo "- " . $table->tablename . "\n";
     }
 
-    echo "\n\nChecking if 'teachers' table exists...\n";
-    $teachersExists = collect($tables)->contains(fn($t) => $t->tablename === 'teachers');
+    echo "\n\nChecking if 'teacher' table exists...\n";
+    $teacherExists = collect($tables)->contains(fn($t) => $t->tablename === 'teacher');
 
-    if ($teachersExists) {
-        echo "✅ 'teachers' table EXISTS\n";
+    if ($teacherExists) {
+        echo "✅ 'teacher' table EXISTS\n";
 
         // Check table structure
-        $columns = DB::select("SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'teachers' ORDER BY ordinal_position");
+        $columns = DB::select("SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'teacher' ORDER BY ordinal_position");
         echo "\nTable structure:\n";
         foreach ($columns as $col) {
             echo "  - {$col->column_name} ({$col->data_type})\n";
         }
     } else {
-        echo "❌ 'teachers' table DOES NOT EXIST\n";
+        echo "❌ 'teacher' table DOES NOT EXIST\n";
     }
 
 } catch (Exception $e) {

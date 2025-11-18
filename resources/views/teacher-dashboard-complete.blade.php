@@ -945,22 +945,45 @@
         // Load Dashboard Data
         async function loadDashboardData() {
             try {
+                console.log('Loading dashboard data...');
                 const response = await fetch('/api/dashboard/stats');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
                 const data = await response.json();
+                console.log('Dashboard data received:', data);
                 
                 // Update statistics
-                document.getElementById('total-students').textContent = data.total_students;
-                document.getElementById('avg-progress').textContent = data.avg_progress + '%';
-                document.getElementById('pending-tasks').textContent = data.pending_tasks;
-                document.getElementById('engagement-rate').textContent = data.engagement_rate + '%';
+                document.getElementById('total-students').textContent = data.total_students || 0;
+                document.getElementById('avg-progress').textContent = (data.avg_progress || 0) + '%';
+                document.getElementById('pending-tasks').textContent = data.pending_tasks || 0;
+                document.getElementById('engagement-rate').textContent = (data.engagement_rate || 0) + '%';
                 
                 // Update change indicators
-                document.getElementById('students-change').textContent = data.students_change;
-                document.getElementById('progress-change').textContent = data.progress_change;
-                document.getElementById('tasks-change').textContent = data.tasks_change;
-                document.getElementById('engagement-change').textContent = data.engagement_change;
+                document.getElementById('students-change').textContent = data.students_change || 'No data';
+                document.getElementById('progress-change').textContent = data.progress_change || 'No data';
+                document.getElementById('tasks-change').textContent = data.tasks_change || 'No data';
+                document.getElementById('engagement-change').textContent = data.engagement_change || 'No data';
+                
+                console.log('Dashboard data loaded successfully');
             } catch (error) {
                 console.error('Error loading dashboard data:', error);
+                
+                // Show error state in UI
+                document.getElementById('total-students').textContent = '0';
+                document.getElementById('avg-progress').textContent = '0%';
+                document.getElementById('pending-tasks').textContent = '0';
+                document.getElementById('engagement-rate').textContent = '0%';
+                
+                document.getElementById('students-change').textContent = 'Error loading data';
+                document.getElementById('progress-change').textContent = 'Error loading data';
+                document.getElementById('tasks-change').textContent = 'Error loading data';
+                document.getElementById('engagement-change').textContent = 'Error loading data';
+                
+                // Show notification to user
+                showNotification('Failed to load dashboard data. Please refresh the page.');
             }
         }
 

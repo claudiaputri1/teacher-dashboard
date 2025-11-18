@@ -30,8 +30,8 @@ try {
     echo "Database: " . DB::connection()->getDatabaseName() . "<br>";
 
     // Test query
-    $result = DB::table('teachers')->count();
-    echo "✅ Query Test: Found {$result} teachers in database<br>";
+    $result = DB::table('teacher')->count();
+    echo "✅ Query Test: Found {$result} teacher in database<br>";
 
     echo "<br><strong style='color: green;'>Database is working properly!</strong>";
 

@@ -22,28 +22,55 @@ class DashboardController extends Controller
 
     public function getDashboardStats()
     {
-        $teacher = auth()->user();
-        // Use teacher->id directly instead of user_id (which can be NULL)
-        $teacherId = $teacher->id;
+        try {
+            $teacher = auth()->user();
+            
+            if (!$teacher) {
+                \Log::error('No authenticated user found');
+                return response()->json(['error' => 'Authentication required'], 401);
+            }
 
-        // Debug: Log the teacher ID
-        \Log::info('Dashboard stats requested for teacher ID: ' . $teacherId);
+            // Use teacher->id directly instead of user_id (which can be NULL)
+            $teacherId = $teacher->id;
 
-        $stats = $this->supabase->getDashboardStats($teacherId);
+            // Debug: Log the teacher information
+            \Log::info('Dashboard stats requested for teacher:', [
+                'id' => $teacherId,
+                'name' => $teacher->name ?? 'No name',
+                'email' => $teacher->email ?? 'No email',
+                'user_id' => $teacher->user_id ?? 'No user_id'
+            ]);
 
-        // Debug: Log the stats data
-        \Log::info('Dashboard stats data: ', $stats);
+            $stats = $this->supabase->getDashboardStats($teacherId);
 
-        return response()->json([
-            'total_students' => $stats['total_students'],
-            'avg_progress' => $stats['avg_progress'],
-            'pending_tasks' => $stats['pending_tasks'],
-            'engagement_rate' => $stats['engagement_rate'],
-            'students_change' => $stats['students_change'],
-            'progress_change' => $stats['progress_change'],
-            'tasks_change' => $stats['tasks_change'],
-            'engagement_change' => $stats['engagement_change']
-        ]);
+            // Debug: Log the stats data
+            \Log::info('Dashboard stats data: ', $stats);
+
+            return response()->json([
+                'total_students' => $stats['total_students'],
+                'avg_progress' => $stats['avg_progress'],
+                'pending_tasks' => $stats['pending_tasks'],
+                'engagement_rate' => $stats['engagement_rate'],
+                'students_change' => $stats['students_change'],
+                'progress_change' => $stats['progress_change'],
+                'tasks_change' => $stats['tasks_change'],
+                'engagement_change' => $stats['engagement_change']
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error in getDashboardStats: ' . $e->getMessage());
+            \Log::error('Stack trace: ' . $e->getTraceAsString());
+            
+            return response()->json([
+                'total_students' => 0,
+                'avg_progress' => 0,
+                'pending_tasks' => 0,
+                'engagement_rate' => 0,
+                'students_change' => 'Error loading data',
+                'progress_change' => 'Error loading data',
+                'tasks_change' => 'Error loading data',
+                'engagement_change' => 'Error loading data'
+            ], 500);
+        }
     }
 
     public function getClassroomData()

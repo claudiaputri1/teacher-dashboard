@@ -14,7 +14,7 @@ try {
     // Test 1: Check if we can connect to teacher table
     $count = Teacher::count();
     echo "✅ Connected to 'teacher' table\n";
-    echo "   Current teachers count: {$count}\n\n";
+    echo "   Current teacher count: {$count}\n\n";
 
     // Test 2: Check if email already exists
     $testEmail = 'test-' . time() . '@example.com';

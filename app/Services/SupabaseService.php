@@ -67,40 +67,74 @@ class SupabaseService
         try {
             \Log::info('Getting dashboard stats for teacher: ' . $teacherId);
 
-            // Get real data from Supabase
+            // Initialize default values
+            $totalStudents = 0;
+            $avgProgress = 0;
+            $pendingTasks = 0;
+            $engagementRate = 0;
+
+            // Get real data from Supabase with better error handling
             \Log::info('Fetching students...');
-            $studentsResponse = $this->makeRequest('GET', 'profiles', null, [
-                'role' => 'eq.student',
-                'select' => 'id,full_name,created_at'
-            ]);
-            \Log::info('Students fetched: ' . $studentsResponse->status());
+            try {
+                $studentsResponse = $this->makeRequest('GET', 'profiles', null, [
+                    'role' => 'eq.student',
+                    'select' => 'id,full_name,created_at'
+                ]);
+                \Log::info('Students response status: ' . $studentsResponse->status());
+                if ($studentsResponse->successful()) {
+                    $students = $studentsResponse->json();
+                    $totalStudents = count($students);
+                    \Log::info('Total students found: ' . $totalStudents);
+                } else {
+                    \Log::warning('Students fetch failed: ' . $studentsResponse->body());
+                }
+            } catch (\Exception $e) {
+                \Log::error('Error fetching students: ' . $e->getMessage());
+            }
 
             \Log::info('Fetching progress...');
-            $progressResponse = $this->makeRequest('GET', 'student_progress', null, [
-                'select' => 'completion_percentage,time_spent_seconds,updated_at',
-                'limit' => '100'
-            ]);
-            \Log::info('Progress fetched: ' . $progressResponse->status());
+            try {
+                $progressResponse = $this->makeRequest('GET', 'student_progress', null, [
+                    'select' => 'completion_percentage,time_spent_seconds,updated_at',
+                    'limit' => '100'
+                ]);
+                \Log::info('Progress response status: ' . $progressResponse->status());
+                if ($progressResponse->successful()) {
+                    $progress = $progressResponse->json();
+                    $avgProgress = $progress ? collect($progress)->avg('completion_percentage') : 0;
+                    \Log::info('Average progress calculated: ' . $avgProgress);
+                } else {
+                    \Log::warning('Progress fetch failed: ' . $progressResponse->body());
+                }
+            } catch (\Exception $e) {
+                \Log::error('Error fetching progress: ' . $e->getMessage());
+            }
 
             \Log::info('Fetching assignments...');
-            $assignmentsResponse = $this->makeRequest('GET', 'assignments', null, [
-                'teacher_id' => 'eq.' . $teacherId,
-                'select' => 'id,is_published,created_at'
-            ]);
-            \Log::info('Assignments fetched: ' . $assignmentsResponse->status());
-
-            $students = $studentsResponse->successful() ? $studentsResponse->json() : [];
-            $progress = $progressResponse->successful() ? $progressResponse->json() : [];
-            $assignments = $assignmentsResponse->successful() ? $assignmentsResponse->json() : [];
-
-            // Calculate real statistics
-            $totalStudents = count($students);
-            $avgProgress = $progress ? collect($progress)->avg('completion_percentage') : 0;
-            $pendingTasks = collect($assignments)->where('is_published', false)->count();
+            try {
+                $assignmentsResponse = $this->makeRequest('GET', 'assignments', null, [
+                    'teacher_id' => 'eq.' . $teacherId,
+                    'select' => 'id,is_published,created_at'
+                ]);
+                \Log::info('Assignments response status: ' . $assignmentsResponse->status());
+                if ($assignmentsResponse->successful()) {
+                    $assignments = $assignmentsResponse->json();
+                    $pendingTasks = collect($assignments)->where('is_published', false)->count();
+                    \Log::info('Pending tasks calculated: ' . $pendingTasks);
+                } else {
+                    \Log::warning('Assignments fetch failed: ' . $assignmentsResponse->body());
+                }
+            } catch (\Exception $e) {
+                \Log::error('Error fetching assignments: ' . $e->getMessage());
+            }
 
             \Log::info('Calculating engagement rate...');
-            $engagementRate = $this->calculateEngagementRate($teacherId);
-            \Log::info('Engagement rate calculated: ' . $engagementRate);
+            try {
+                $engagementRate = $this->calculateEngagementRate($teacherId);
+                \Log::info('Engagement rate calculated: ' . $engagementRate);
+            } catch (\Exception $e) {
+                \Log::error('Error calculating engagement rate: ' . $e->getMessage());
+            }
 
             // Calculate changes - each wrapped in try-catch to prevent failures
             \Log::info('Calculating changes...');
@@ -110,7 +144,7 @@ class SupabaseService
             $engagementChange = $this->getEngagementChange($teacherId);
             \Log::info('Changes calculated');
 
-            return [
+            $result = [
                 'total_students' => $totalStudents,
                 'avg_progress' => round($avgProgress, 1),
                 'pending_tasks' => $pendingTasks,
@@ -120,6 +154,10 @@ class SupabaseService
                 'tasks_change' => $tasksChange,
                 'engagement_change' => $engagementChange
             ];
+
+            \Log::info('Dashboard stats result: ' . json_encode($result));
+            return $result;
+
         } catch (\Exception $e) {
             \Log::error('Error getting dashboard stats: ' . $e->getMessage());
             \Log::error('Stack trace: ' . $e->getTraceAsString());

@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ClassController;
+use App\Http\Controllers\Api\StudentController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -26,7 +28,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/dashboard/profile/update', [ProfileController::class, 'updateProfile'])->name('dashboard.profile.update');
     
     // Dashboard student management (session-based)
-    Route::post('/dashboard/students/add', [\App\Http\Controllers\Api\StudentController::class, 'store'])->name('dashboard.students.add');
+    Route::post('/dashboard/students/add', [StudentController::class, 'store'])->name('dashboard.students.add');
     Route::get('/dashboard/classes', [ClassController::class, 'index'])->name('dashboard.classes');
     
     // Dashboard API endpoints (session-based for web interface)
@@ -75,7 +77,7 @@ Route::middleware('auth')->group(function () {
     
     // Debug route to test dashboard API
     Route::get('/debug/dashboard', function() {
-        $controller = new \App\Http\Controllers\DashboardController(new \App\Services\SupabaseService());
+        $controller = new DashboardController(new \App\Services\SupabaseService());
         try {
             $stats = $controller->getDashboardStats();
             $classroom = $controller->getClassroomData();
@@ -95,7 +97,7 @@ Route::middleware('auth')->group(function () {
     
     // Debug route to test profile update
     Route::post('/debug/profile', function(\Illuminate\Http\Request $request) {
-        $controller = new \App\Http\Controllers\ProfileController();
+        $controller = new ProfileController();
         try {
             return $controller->updateProfile($request);
         } catch (\Exception $e) {
@@ -117,6 +119,24 @@ Route::middleware('auth')->group(function () {
             'has_profile' => $teacher->profile ? true : false,
             'profile_data' => $teacher->profile ? $teacher->profile->toArray() : null,
         ]);
+    });
+    
+    // Debug route to test stats API directly
+    Route::get('/debug/stats', function() {
+        try {
+            $controller = new DashboardController(new \App\Services\SupabaseService());
+            $response = $controller->getDashboardStats();
+            return response()->json([
+                'success' => true,
+                'data' => $response->getData()
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
     });
 });
 

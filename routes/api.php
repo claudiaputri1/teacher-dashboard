@@ -3,8 +3,8 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ClassController;
-use App\Http\Controllers\StudentController;
-use App\Http\Controllers\AssignmentController;
+use App\Http\Controllers\Api\StudentController;
+use App\Http\Controllers\Api\AssignmentController;
 use App\Http\Controllers\Api\AssessmentController;
 use Illuminate\Support\Facades\Hash;
 
@@ -55,8 +55,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('classes/{class}/students', [ClassController::class, 'addStudent']);
     
     // Students
-    Route::apiResource('students', \App\Http\Controllers\Api\StudentController::class);
-    Route::get('students/{student}/progress', [\App\Http\Controllers\Api\StudentController::class, 'getProgress']);
+    Route::apiResource('students', StudentController::class);
+    Route::get('students/{student}/progress', [StudentController::class, 'getProgress']);
     
     // Assignments
     Route::apiResource('assignments', AssignmentController::class);
