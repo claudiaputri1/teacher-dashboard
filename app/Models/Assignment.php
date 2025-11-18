@@ -54,6 +54,7 @@ class Assignment extends Model
      *
      * @var array
      */
+    
     protected $casts = [
         'due_date' => 'datetime',
         'rubric' => 'array',
