@@ -23,18 +23,17 @@ class DashboardController extends Controller
     public function getDashboardStats()
     {
         $teacher = auth()->user();
-        $teacherId = $teacher->user_id; // Use user_id from teachers table which references profiles
-        
+        // Use teacher->id directly instead of user_id (which can be NULL)
+        $teacherId = $teacher->id;
+
         // Debug: Log the teacher ID
         \Log::info('Dashboard stats requested for teacher ID: ' . $teacherId);
-        \Log::info('Teacher auth ID: ' . auth()->id());
-        \Log::info('Teacher user_id: ' . $teacher->user_id);
-        
+
         $stats = $this->supabase->getDashboardStats($teacherId);
-        
+
         // Debug: Log the stats data
         \Log::info('Dashboard stats data: ', $stats);
-        
+
         return response()->json([
             'total_students' => $stats['total_students'],
             'avg_progress' => $stats['avg_progress'],
@@ -50,7 +49,7 @@ class DashboardController extends Controller
     public function getClassroomData()
     {
         $teacher = auth()->user();
-        $teacherId = $teacher->user_id;
+        $teacherId = $teacher->id;
         $classes = $this->supabase->getClasses($teacherId);
         $recentStudents = $this->supabase->getStudents($teacherId);
 
@@ -63,7 +62,7 @@ class DashboardController extends Controller
     public function getProgressData()
     {
         $teacher = auth()->user();
-        $teacherId = $teacher->user_id;
+        $teacherId = $teacher->id;
         $students = $this->supabase->getStudentsWithProgress($teacherId);
 
         return response()->json([
@@ -74,7 +73,7 @@ class DashboardController extends Controller
     public function getAssessmentData()
     {
         $teacher = auth()->user();
-        $teacherId = $teacher->user_id;
+        $teacherId = $teacher->id;
         $assessments = $this->supabase->getAIAssessments($teacherId);
         $assignments = $this->supabase->getAssignments($teacherId);
 
@@ -87,8 +86,8 @@ class DashboardController extends Controller
     public function getAnalyticsData()
     {
         $teacher = auth()->user();
-        $teacherId = $teacher->user_id;
-        
+        $teacherId = $teacher->id;
+
         // Placeholder data - akan diimplementasi sesuai kebutuhan
         return response()->json([
             'stats' => [
@@ -240,6 +239,17 @@ class DashboardController extends Controller
             $remainingMinutes = floor(($seconds % 3600) / 60);
             return $hours . 'j ' . $remainingMinutes . 'm';
         }
+    }
+
+    private function formatLevel($quizScore)
+    {
+        // Convert quiz score to level
+        if ($quizScore >= 90) return 'Level 5 - Expert';
+        if ($quizScore >= 75) return 'Level 4 - Advanced';
+        if ($quizScore >= 60) return 'Level 3 - Intermediate';
+        if ($quizScore >= 40) return 'Level 2 - Beginner';
+        if ($quizScore > 0) return 'Level 1 - Novice';
+        return 'Level 0 - Belum ada data';
     }
 
     private function getPerformanceStatus($percentage)

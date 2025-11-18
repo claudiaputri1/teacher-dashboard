@@ -16,7 +16,7 @@ class Teacher extends Authenticatable
      *
      * @var string
      */
-    protected $table = 'teachers';
+    protected $table = 'teacher';
 
     /**
      * The primary key type.

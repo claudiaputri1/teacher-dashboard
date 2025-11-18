@@ -11,9 +11,9 @@ class SupabaseService
 
     public function __construct()
     {
-        $this->baseUrl = 'https://odrnygorzfwgnbkibhvb.supabase.co';
-        $this->apiKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9kcm55Z29yemZ3Z25ia2liaHZiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg2OTEzOTksImV4cCI6MjA3NDI2NzM5OX0.dqAh9INof_xs0t1gVgfZH1nQbVQUODI9vRxhrzDH9zg';
-        
+        $this->baseUrl = rtrim(env('SUPABASE_URL'), '/');
+        $this->apiKey = env('SUPABASE_ANON_KEY');
+
         // Use local database if Supabase not configured
         $this->useLocalDb = empty($this->baseUrl) || empty($this->apiKey);
     }
@@ -21,7 +21,7 @@ class SupabaseService
     public function makeRequest($method, $table, $data = null, $filters = [])
     {
         $url = $this->baseUrl . '/rest/v1/' . $table;
-        
+
         $headers = [
             'apikey' => $this->apiKey,
             'Authorization' => 'Bearer ' . $this->apiKey,
@@ -37,21 +37,27 @@ class SupabaseService
             $url .= '?' . implode('&', $queryParams);
         }
 
-        $response = Http::withHeaders($headers);
+        // Add timeout to prevent hanging requests
+        $response = Http::timeout(10)->withHeaders($headers);
 
-        switch (strtoupper($method)) {
-            case 'GET':
-                return $response->get($url);
-            case 'POST':
-                return $response->post($url, $data);
-            case 'PUT':
-                return $response->put($url, $data);
-            case 'PATCH':
-                return $response->patch($url, $data);
-            case 'DELETE':
-                return $response->delete($url);
-            default:
-                throw new \Exception('Unsupported HTTP method');
+        try {
+            switch (strtoupper($method)) {
+                case 'GET':
+                    return $response->get($url);
+                case 'POST':
+                    return $response->post($url, $data);
+                case 'PUT':
+                    return $response->put($url, $data);
+                case 'PATCH':
+                    return $response->patch($url, $data);
+                case 'DELETE':
+                    return $response->delete($url);
+                default:
+                    throw new \Exception('Unsupported HTTP method');
+            }
+        } catch (\Exception $e) {
+            \Log::error("Supabase request failed: {$method} {$table} - " . $e->getMessage());
+            throw $e;
         }
     }
 
@@ -60,41 +66,50 @@ class SupabaseService
     {
         try {
             \Log::info('Getting dashboard stats for teacher: ' . $teacherId);
-            
+
             // Get real data from Supabase
+            \Log::info('Fetching students...');
             $studentsResponse = $this->makeRequest('GET', 'profiles', null, [
                 'role' => 'eq.student',
                 'select' => 'id,full_name,created_at'
             ]);
-            
-            \Log::info('Students response status: ' . $studentsResponse->status());
-            \Log::info('Students response body: ' . $studentsResponse->body());
-            
+            \Log::info('Students fetched: ' . $studentsResponse->status());
+
+            \Log::info('Fetching progress...');
             $progressResponse = $this->makeRequest('GET', 'student_progress', null, [
-                'select' => 'completion_percentage,time_spent_seconds,updated_at'
+                'select' => 'completion_percentage,time_spent_seconds,updated_at',
+                'limit' => '100'
             ]);
-            
+            \Log::info('Progress fetched: ' . $progressResponse->status());
+
+            \Log::info('Fetching assignments...');
             $assignmentsResponse = $this->makeRequest('GET', 'assignments', null, [
                 'teacher_id' => 'eq.' . $teacherId,
                 'select' => 'id,is_published,created_at'
             ]);
-            
+            \Log::info('Assignments fetched: ' . $assignmentsResponse->status());
+
             $students = $studentsResponse->successful() ? $studentsResponse->json() : [];
             $progress = $progressResponse->successful() ? $progressResponse->json() : [];
             $assignments = $assignmentsResponse->successful() ? $assignmentsResponse->json() : [];
-            
+
             // Calculate real statistics
             $totalStudents = count($students);
             $avgProgress = $progress ? collect($progress)->avg('completion_percentage') : 0;
             $pendingTasks = collect($assignments)->where('is_published', false)->count();
+
+            \Log::info('Calculating engagement rate...');
             $engagementRate = $this->calculateEngagementRate($teacherId);
-            
-            // Calculate changes
+            \Log::info('Engagement rate calculated: ' . $engagementRate);
+
+            // Calculate changes - each wrapped in try-catch to prevent failures
+            \Log::info('Calculating changes...');
             $studentsChange = $this->getStudentsChange($teacherId);
             $progressChange = $this->getProgressChange($teacherId);
             $tasksChange = $this->getTasksChange($teacherId);
             $engagementChange = $this->getEngagementChange($teacherId);
-            
+            \Log::info('Changes calculated');
+
             return [
                 'total_students' => $totalStudents,
                 'avg_progress' => round($avgProgress, 1),
@@ -107,6 +122,7 @@ class SupabaseService
             ];
         } catch (\Exception $e) {
             \Log::error('Error getting dashboard stats: ' . $e->getMessage());
+            \Log::error('Stack trace: ' . $e->getTraceAsString());
             // Return empty data if fails
             return [
                 'total_students' => 0,
@@ -271,9 +287,10 @@ class SupabaseService
     private function calculateEngagementRate($teacherId)
     {
         try {
-            // Hitung engagement berdasarkan assignment submissions
+            // Hitung engagement berdasarkan assignment submissions dengan limit
             $response = $this->makeRequest('GET', 'assignment_submissions', null, [
-                'select' => 'id,status,submitted_at'
+                'select' => 'id,status,submitted_at',
+                'limit' => '100'
             ]);
             if (!$response->successful()) return 0;
             
@@ -312,18 +329,19 @@ class SupabaseService
             $currentResponse = $this->makeRequest('GET', 'student_progress', null, [
                 'updated_at' => 'gte.' . now()->subWeek()->toISOString()
             ]);
-            
-            if (!$currentResponse->successful()) return 'Tidak ada data';
-            
-            $currentProgress = collect($currentResponse->json())->avg('progress_percentage') ?? 0;
-            
+
+            if (!$currentResponse->successful()) return 'Tidak ada perubahan';
+
+            // Fix: Use 'completion_percentage' instead of 'progress_percentage'
+            $currentProgress = collect($currentResponse->json())->avg('completion_percentage') ?? 0;
+
             if ($currentProgress > 0) {
                 return '+' . round($currentProgress, 1) . '% minggu ini';
             } else {
                 return 'Tidak ada perubahan';
             }
         } catch (\Exception $e) {
-            return 'Tidak ada data';
+            return 'Tidak ada perubahan';
         }
     }
 
@@ -331,17 +349,18 @@ class SupabaseService
     private function getTasksChange($teacherId)
     {
         try {
+            // Fix: Use 'is_published' instead of 'status'
             $response = $this->makeRequest('GET', 'assignments', null, [
                 'teacher_id' => 'eq.' . $teacherId,
-                'status' => 'eq.draft'
+                'is_published' => 'eq.false'
             ]);
-            
-            if (!$response->successful()) return 'Tidak ada data';
-            
+
+            if (!$response->successful()) return 'Tidak ada tugas pending';
+
             $pendingTasks = count($response->json());
             return $pendingTasks > 0 ? "{$pendingTasks} perlu review" : 'Semua tugas selesai';
         } catch (\Exception $e) {
-            return 'Tidak ada data';
+            return 'Tidak ada tugas pending';
         }
     }
 
